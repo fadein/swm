@@ -1,0 +1,11 @@
+;;; xlib.meta -*- Scheme -*-
+
+((synopsis "Xlib bindings")
+ (author "Richard Mann")
+ (maintainer "felix winkelmann")
+ (category graphics)
+ (license "unknown")
+ (depends matchable)
+ (doc-from-wiki)
+ (egg "xlib.egg")
+ (files "xlib.meta" "xlib-c.c" "xlib-original.scm" "xlib.setup" "xlib.scm"))
