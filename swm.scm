@@ -9,8 +9,9 @@
 (define tile (lambda () #f))
 (define monocle (lambda () #f))
 
-(when (file-exists? "config.scm")
-  (load "config.scm"))
+(define *config* "config.scm")
+(when (file-exists? *config*)
+  (load *config*))
 
 
 
@@ -31,7 +32,8 @@
 		(xsetbackground display gc (xwhitepixel display screen))
 		(xsetfunction display gc GXCOPY)
 		(xsetfont display gc font)
-		(xselectinput display window (bitwise-ior EXPOSUREMASK BUTTONPRESSMASK))
+		(xselectinput display window
+					  (bitwise-ior EXPOSUREMASK BUTTONPRESSMASK KEYPRESSMASK))
 		(xmapwindow display window)
 		(xnextevent display event)
 		(xdrawstring display window gc 100 30 *disp-string* (string-length *disp-string*))
