@@ -17,8 +17,8 @@
 (define tags '("1" "2" "3" "4" "5" "6" "7" "8" "9"))
 
 (define rules (list
-				(make-Rule "Gimp"     #f #f 0          #t -1)
-				(make-Rule "Firefox"  #f #f (expt 2 8) #f -1)))
+				(make-Rule "Gimp"     #f #f 0                      #t -1)
+				(make-Rule "Firefox"  #f #f (arithmetic-shift 1 8) #f -1)))
 
 ; layout(s)
 (define mfact            0.55); factor of master area size [0.05..0.95] */
