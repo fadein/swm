@@ -1,7 +1,18 @@
- ;;; Shows a window and terminates after a button-press 
-;   (or after the second exposure event)
+(use xlib)
 
-(require-extension xlib)
+(define-record Rule
+			   class instance title tags isfloating monitor)
+
+(define-record Layout
+			   symbol arrange-function)
+
+(define tile (lambda () #f))
+(define monocle (lambda () #f))
+
+(when (file-exists? "config.scm")
+  (load "config.scm"))
+
+
 
 (let ((display (xopendisplay #f)))
   (assert display)
@@ -23,6 +34,6 @@
 		(xselectinput display window (bitwise-ior EXPOSUREMASK BUTTONPRESSMASK))
 		(xmapwindow display window)
 		(xnextevent display event)
-		(xdrawstring display window gc 100 30 "Hello World!" 12)
+		(xdrawstring display window gc 100 30 *disp-string* (string-length *disp-string*))
 		(xflush display)
 		(xnextevent display event)))))
