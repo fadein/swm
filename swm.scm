@@ -1155,11 +1155,11 @@
 ;  	}
 ;  }
 
-;  Client *
-;  nexttiled(Client *c) {
-;  	for(; c && (c->isfloating || !ISVISIBLE(c)); c = c->next);
-;  	return c;
-;  }
+(define (nexttiled c)
+  (let loop ((c c))
+	(if (and c (or (Client-isfloating c) (not (ISVISIBLE c))))
+	  (loop (Client-next c))
+	  c)))
 
 ;  void
 ;  pop(Client *c) {
@@ -1583,31 +1583,42 @@
 ;  	return XTextWidth(dc.font.xfont, text, len);
 ;  }
 
-;  void
-;  tile(Monitor *m) {
-;  	unsigned int i, n, h, mw, my, ty;
-;  	Client *c;
+(define (tile m)
+  (let ((i 0) (n 0) (h 0) (mw 0) (my 0) (ty 0)
+			  (c #f))
+	(let outerLoop ((n n) (c (nexttiled (Monitor-clients m))))
+	  (when c (outerLoop (add1 n) (nexttiled (Client-next c))))
 
-;  	for(n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
-;  	if(n == 0)
-;  		return;
+	  (when (> n 0)
+		(set! mw
+		  (if (> n (Monitor-nmaster m))
+			(if (!= 0 (Monitor-nmaster m))
+			  (* (Monitor-ww m) (Monitor-mfact m))
+			  0)
+			(Monitor-ww m)))
 
-;  	if(n > m->nmaster)
-;  		mw = m->nmaster ? m->ww * m->mfact : 0;
-;  	else
-;  		mw = m->ww;
-;  	for(i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-;  		if(i < m->nmaster) {
-;  			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-;  			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), False);
-;  			my += HEIGHT(c);
-;  		}
-;  		else {
-;  			h = (m->wh - ty) / (n - i);
-;  			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), False);
-;  			ty += HEIGHT(c);
-;  		}
-;  }
+		(let innerLoop ((i 0) (my 0) (ty 0) (c (nexttiled (Monitor-clients m))))
+		  (when c
+			(cond
+			  ((< i (Monitor-nmaster m))
+			   (set! h (/ (- (Monitor-wh m) my) (- (min n (Monitor-nmaster m)) i)))
+			   (resize c
+					   (Monitor-wx m)
+					   (+ (Monitor-wy m) my)
+					   (- mw (* 2 (Client-bw c)))
+					   (- h (* 2 (Client-bw c)))
+					   #f)
+			   (innerLoop (add1 i) (+ my (HEIGHT c)) tw (nexttiled (Client-next c))))
+
+			  (else
+				(set! h (/ (- (Monitor-wh m) ty) (- n i)))
+				(resize c
+						(+ (Monitor-wx m) mw)
+						(+ (Monitor-wy m) ty)
+						(- (Monitor-ww m) mw (* 2 Client-bw c))
+						(- h (* 2 (Client-bw c)))
+						#f)
+				(innerLoop (add1 i) my (+ ty (HEIGHT c)) (nexttiled (Client-next c)))))))))))
 
 ;  void
 ;  togglebar(const Arg *arg) {
