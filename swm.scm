@@ -1,44 +1,32 @@
-;  /* See LICENSE file for copyright and license details.
-;   *
-;   * dynamic window manager is designed like any other X client as well. It is
-;   * driven through handling X events. In contrast to other X clients, a window
-;   * manager selects for SubstructureRedirectMask on the root window, to receive
-;   * events about window (dis-)appearance.  Only one X connection at a time is
-;   * allowed to select for this event mask.
-;   *
-;   * The event handlers of dwm are organized in an array which is accessed
-;   * whenever a new event has been fetched. This allows event dispatching
-;   * in O(1) time.
-;   *
-;   * Each child of the root window is called a client, except windows which have
-;   * set the override_redirect flag.  Clients are organized in a linked client
-;   * list on each monitor, the focus history is remembered through a stack list
-;   * on each monitor. Each client contains a bit array to indicate the tags of a
-;   * client.
-;   *
-;   * Keys and tagging rules are organized as arrays and defined in config.h.
-;   *
-;   * To understand everything else, start reading main().
-;   */
-;  #include <errno.h>
-;  #include <locale.h>
-;  #include <stdarg.h>
-;  #include <signal.h>
-;  #include <stdio.h>
-;  #include <stdlib.h>
-;  #include <string.h>
-;  #include <unistd.h>
-;  #include <sys/types.h>
-;  #include <sys/wait.h>
-;  #include <X11/cursorfont.h>
-;  #include <X11/keysym.h>
-;  #include <X11/Xatom.h>
-;  #include <X11/Xlib.h>
-;  #include <X11/Xproto.h>
-;  #include <X11/Xutil.h>
-;  #ifdef XINERAMA
-;  #include <X11/extensions/Xinerama.h>
-;  #endif /* XINERAMA */
+; vim: set filetype=scheme:
+;See LICENSE file for copyright and license details.
+
+;scheme window manager is a port of dynamic window manager (DWM) into
+;Chicken Scheme.
+
+;scheme window manager is designed like any other X client as well. It is
+;driven through handling X events. In contrast to other X clients, a window
+;manager selects for SubstructureRedirectMask on the root window, to receive
+;events about window (dis-)appearance.  Only one X connection at a time is
+;allowed to select for this event mask.
+
+;The event handlers of dwm are organized in an array which is accessed
+;whenever a new event has been fetched. This allows event dispatching
+;in O(1) time.
+
+;Each child of the root window is called a client, except windows which have
+;set the override_redirect flag.  Clients are organized in a linked client
+;list on each monitor, the focus history is remembered through a stack list
+;on each monitor. Each client contains a bit array to indicate the tags of a
+;client.
+
+;Keys and tagging rules are organized as arrays and defined in config.h.
+
+;To understand everything else, start reading main().
+
+(use extras)
+(use xlib)
+(use miscmacros)
 
 ;  /* macros */
 ;  #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
@@ -55,211 +43,99 @@
 ;  #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 ;  #define TEXTW(X)                (textnw(X, strlen(X)) + dc.font.height)
 
-;  /* enums */
-;  enum { CurNormal, CurResize, CurMove, CurLast };        /* cursor */
-;  enum { ColBorder, ColFG, ColBG, ColLast };              /* color */
-;  enum { NetSupported, NetWMName, NetWMState,
-;         NetWMFullscreen, NetActiveWindow, NetWMWindowType,
-;         NetWMWindowTypeDialog, NetLast };     /* EWMH atoms */
-;  enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
-;  enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
-;         ClkClientWin, ClkRootWin, ClkLast };             /* clicks */
+; enums
+(define-enum Cursor->int Cursor->sym
+			 CurNormal CurResize CurMove CurLast)
+(define-enum Color->int Color->sym
+			 ColBorder ColFG ColBG ColLast)
+(define-enum EWMHAtom->int  EWMHAtom->sym
+			 NetSupported NetWMName NetWMState
+			 NetWMFullscreen NetActiveWindow NetWMWindowType
+			 NetWMWindowTypeDialog NetLast)
+(define-enum DefaultAtoms->int DefaultAtoms->sym
+			 WMProtocols WMDelete WMState WMTakeFocus WMLast)
+(define-enum Clicks->int Cliks->sym
+			 ClkTagBar ClkLtSymbol ClkStatusText ClkWinTitle
+			 ClkClientWin ClkRootWin ClkLast)
 
-;  typedef union {
-;  	int i;
-;  	unsigned int ui;
-;  	float f;
-;  	const void *v;
-;  } Arg;
+(define-record Button
+			   click
+			   mask
+			   button
+			   func
+			   arg)
 
-;  typedef struct {
-;  	unsigned int click;
-;  	unsigned int mask;
-;  	unsigned int button;
-;  	void (*func)(const Arg *arg);
-;  	const Arg arg;
-;  } Button;
+(define-record Client
+			   name
+			   mina maxa
+			   x y w h
+			   oldx oldy oldw oldh
+			   basw baseh incw inch maxw maxh minw minh
+			   bw oldbw
+			   tags
+			   isfixed isfloating isurgent neverfocus oldstate isfullscreen
+			   next
+			   snext
+			   mon
+			   win)
 
-;  typedef struct Monitor Monitor;
-;  typedef struct Client Client;
-;  struct Client {
-;  	char name[256];
-;  	float mina, maxa;
-;  	int x, y, w, h;
-;  	int oldx, oldy, oldw, oldh;
-;  	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
-;  	int bw, oldbw;
-;  	unsigned int tags;
-;  	Bool isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
-;  	Client *next;
-;  	Client *snext;
-;  	Monitor *mon;
-;  	Window win;
-;  };
+(define-record Font
+			   ascent
+			   descent
+			   height
+			   set
+			   xfont)
 
-;  typedef struct {
-;  	int x, y, w, h;
-;  	unsigned long norm[ColLast];
-;  	unsigned long sel[ColLast];
-;  	Drawable drawable;
-;  	GC gc;
-;  	struct {
-;  		int ascent;
-;  		int descent;
-;  		int height;
-;  		XFontSet set;
-;  		XFontStruct *xfont;
-;  	} font;
-;  } DC; /* draw context */
+(define-record DC
+			   x y w h
+			   norm
+			   sel
+			   drawable
+			   gc
+			   font)
 
-;  typedef struct {
-;  	unsigned int mod;
-;  	KeySym keysym;
-;  	void (*func)(const Arg *);
-;  	const Arg arg;
-;  } Key;
+(define-record Key
+			   mod keysym func arg)
 
-;  typedef struct {
-;  	const char *symbol;
-;  	void (*arrange)(Monitor *);
-;  } Layout;
+(define-record Layout
+			   symbol arrange)
 
-;  struct Monitor {
-;  	char ltsymbol[16];
-;  	float mfact;
-;  	int nmaster;
-;  	int num;
-;  	int by;               /* bar geometry */
-;  	int mx, my, mw, mh;   /* screen size */
-;  	int wx, wy, ww, wh;   /* window area  */
-;  	unsigned int seltags;
-;  	unsigned int sellt;
-;  	unsigned int tagset[2];
-;  	Bool showbar;
-;  	Bool topbar;
-;  	Client *clients;
-;  	Client *sel;
-;  	Client *stack;
-;  	Monitor *next;
-;  	Window barwin;
-;  	const Layout *lt[2];
-;  };
+(define-record Monitor
+			   ltsymbol
+			   mfact
+			   nmaster
+			   num
+			   by             ;bar geometry
+			   mx my mw mh    ;screen size
+			   wx wy ww wh    ;window area
+			   seltags
+			   sellt
+			   tagset
+			   showbar
+			   topbar
+			   clients
+			   sel
+			   stack
+			   next
+			   barwin
+			   lt)
 
-;  typedef struct {
-;  	const char *class;
-;  	const char *instance;
-;  	const char *title;
-;  	unsigned int tags;
-;  	Bool isfloating;
-;  	int monitor;
-;  } Rule;
+(define-record Rule
+			   class
+			   instance
+			   title
+			   tags
+			   isfloating
+			   monitor)
 
-;  /* function declarations */
-;  static void applyrules(Client *c);
-;  static Bool applysizehints(Client *c, int *x, int *y, int *w, int *h, Bool interact);
-;  static void arrange(Monitor *m);
-;  static void arrangemon(Monitor *m);
-;  static void attach(Client *c);
-;  static void attachstack(Client *c);
-;  static void buttonpress(XEvent *e);
-;  static void checkotherwm(void);
-;  static void cleanup(void);
-;  static void cleanupmon(Monitor *mon);
-;  static void clearurgent(Client *c);
-;  static void clientmessage(XEvent *e);
-;  static void configure(Client *c);
-;  static void configurenotify(XEvent *e);
-;  static void configurerequest(XEvent *e);
-;  static Monitor *createmon(void);
-;  static void destroynotify(XEvent *e);
-;  static void detach(Client *c);
-;  static void detachstack(Client *c);
-;  static void die(const char *errstr, ...);
-;  static Monitor *dirtomon(int dir);
-;  static void drawbar(Monitor *m);
-;  static void drawbars(void);
-;  static void drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]);
-;  static void drawtext(const char *text, unsigned long col[ColLast], Bool invert);
-;  static void enternotify(XEvent *e);
-;  static void expose(XEvent *e);
-;  static void focus(Client *c);
-;  static void focusin(XEvent *e);
-;  static void focusmon(const Arg *arg);
-;  static void focusstack(const Arg *arg);
-;  static unsigned long getcolor(const char *colstr);
-;  static Bool getrootptr(int *x, int *y);
-;  static long getstate(Window w);
-;  static Bool gettextprop(Window w, Atom atom, char *text, unsigned int size);
-;  static void grabbuttons(Client *c, Bool focused);
-;  static void grabkeys(void);
-;  static void incnmaster(const Arg *arg);
-;  static void initfont(const char *fontstr);
-;  static void keypress(XEvent *e);
-;  static void killclient(const Arg *arg);
-;  static void manage(Window w, XWindowAttributes *wa);
-;  static void mappingnotify(XEvent *e);
-;  static void maprequest(XEvent *e);
-;  static void monocle(Monitor *m);
-;  static void motionnotify(XEvent *e);
-;  static void movemouse(const Arg *arg);
-;  static Client *nexttiled(Client *c);
-;  static void pop(Client *);
-;  static void propertynotify(XEvent *e);
-;  static void quit(const Arg *arg);
-;  static Monitor *recttomon(int x, int y, int w, int h);
-;  static void resize(Client *c, int x, int y, int w, int h, Bool interact);
-;  static void resizeclient(Client *c, int x, int y, int w, int h);
-;  static void resizemouse(const Arg *arg);
-;  static void restack(Monitor *m);
-;  static void run(void);
-;  static void scan(void);
-;  static Bool sendevent(Client *c, Atom proto);
-;  static void sendmon(Client *c, Monitor *m);
-;  static void setclientstate(Client *c, long state);
-;  static void setfocus(Client *c);
-;  static void setfullscreen(Client *c, Bool fullscreen);
-;  static void setlayout(const Arg *arg);
-;  static void setmfact(const Arg *arg);
-;  static void setup(void);
-;  static void showhide(Client *c);
-;  static void sigchld(int unused);
-;  static void spawn(const Arg *arg);
-;  static void tag(const Arg *arg);
-;  static void tagmon(const Arg *arg);
-;  static int textnw(const char *text, unsigned int len);
-;  static void tile(Monitor *);
-;  static void togglebar(const Arg *arg);
-;  static void togglefloating(const Arg *arg);
-;  static void toggletag(const Arg *arg);
-;  static void toggleview(const Arg *arg);
-;  static void unfocus(Client *c, Bool setfocus);
-;  static void unmanage(Client *c, Bool destroyed);
-;  static void unmapnotify(XEvent *e);
-;  static Bool updategeom(void);
-;  static void updatebarpos(Monitor *m);
-;  static void updatebars(void);
-;  static void updatenumlockmask(void);
-;  static void updatesizehints(Client *c);
-;  static void updatestatus(void);
-;  static void updatewindowtype(Client *c);
-;  static void updatetitle(Client *c);
-;  static void updatewmhints(Client *c);
-;  static void view(const Arg *arg);
-;  static Client *wintoclient(Window w);
-;  static Monitor *wintomon(Window w);
-;  static int xerror(Display *dpy, XErrorEvent *ee);
-;  static int xerrordummy(Display *dpy, XErrorEvent *ee);
-;  static int xerrorstart(Display *dpy, XErrorEvent *ee);
-;  static void zoom(const Arg *arg);
-
-;  /* variables */
-;  static const char broken[] = "broken";
-;  static char stext[256];
-;  static int screen;
-;  static int sw, sh;           /* X display screen geometry width, height */
-;  static int bh, blw = 0;      /* bar geometry */
+;  variables
+(define *broken* "broken")
+(define stext "")
+(define screen)
+(define sw) (define sh) ; X display screen geometry width, height
+(define bh) (define blw 0) ; bar geometry
 ;  static int (*xerrorxlib)(Display *, XErrorEvent *);
-;  static unsigned int numlockmask = 0;
+(define numlockmask 0)
 ;  static void (*handler[LASTEvent]) (XEvent *) = {
 ;  	[ButtonPress] = buttonpress,
 ;  	[ClientMessage] = clientmessage,
@@ -276,21 +152,21 @@
 ;  	[PropertyNotify] = propertynotify,
 ;  	[UnmapNotify] = unmapnotify
 ;  };
-;  static Atom wmatom[WMLast], netatom[NetLast];
-;  static Bool running = True;
-;  static Cursor cursor[CurLast];
-;  static Display *dpy;
-;  static DC dc;
-;  static Monitor *mons = NULL, *selmon = NULL;
-;  static Window root;
 
-;  /* configuration, allows nested code to access above variables */
-;  #include "config.h"
+;TODO - make sure these aren't gonna be off-by-one errors
+;(define wmatom (make-vector (DefaultAtoms->int 'WMLast)))
+;(define netatom (make-vector (DefaultAtoms->int 'NetLast)))
+(define running #t)
+(define cursor (make-vector (Cursor->int 'CurLast)))
+(define dpy)
+(define dc)
+(define mons #f) (define selmon #f)
+(define root)
 
 ;  /* compile-time check if all tags fit into an unsigned int bit array. */
 ;  struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
-;  /* function implementations */
+; function implementations
 ;  void
 ;  applyrules(Client *c) {
 ;  	const char *class, *instance;
@@ -691,6 +567,10 @@
 ;  	}
 ;  }
 
+(define die
+  (lambda l
+	(for-each (lambda (i) (printf i)) l)
+	(exit 1)))
 ;  void
 ;  die(const char *errstr, ...) {
 ;  	va_list ap;
@@ -2130,12 +2010,20 @@
 ;  	pop(c);
 ;  }
 
+(define tile (lambda () '())) (define monocle (lambda () '())); DELETE ME
+; configuration, allows nested code to access above variables
+(include "config.scm")
+(define VERSION "6.0")
+
+
 ;  int
 ;  main(int argc, char *argv[]) {
-;  	if(argc == 2 && !strcmp("-v", argv[1]))
-;  		die("dwm-"VERSION", © 2006-2011 dwm engineers, see LICENSE for details\n");
-;  	else if(argc != 1)
-;  		die("usage: dwm [-v]\n");
+(cond
+  ((and (= 2 (length (argv))) (string=? "-v" (cadr (argv))))
+   (die "swm-" VERSION ", 2006-2013 Erik Falor~n"))
+  ((not (= 1 (length (argv))))
+   (die "usage: dwm [-v]\n")))
+
 ;  	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
 ;  		fputs("warning: no locale support\n", stderr);
 ;  	if(!(dpy = XOpenDisplay(NULL)))
