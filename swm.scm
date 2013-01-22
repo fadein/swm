@@ -1223,11 +1223,10 @@
 ;  	return r;
 ;  }
 
-;  void
-;  resize(Client *c, int x, int y, int w, int h, Bool interact) {
-;  	if(applysizehints(c, &x, &y, &w, &h, interact))
-;  		resizeclient(c, x, y, w, h);
-;  }
+(define (resize c x y w h interact)
+  (let ((result (applysizehints c x y w h interact)))
+	(when result
+	  (apply (lambda (x y w h) (resizeclient c x y w h)) result))))
 
 ;  void
 ;  resizeclient(Client *c, int x, int y, int w, int h) {
