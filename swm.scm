@@ -573,8 +573,8 @@
 	  (let ((format (cadr expr))
 			(args (cddr expr)))
 		`(,(rename 'begin)
-		   (,(rename 'fprintf) (,(rename current-error-port)) ,format ,@args)
-		   (,(rename 'flush-output) (,(rename current-error-port)))
+		   (,(rename 'fprintf) (,(rename 'current-error-port)) ,format ,@args)
+		   (,(rename 'flush-output) (,(rename 'current-error-port)))
 		   (,(rename 'exit) 1))))))
 
 ;  void
@@ -2036,19 +2036,21 @@
 ;  main(int argc, char *argv[]) {
 (cond
   ((and (= 2 (length (argv))) (string=? "-v" (cadr (argv))))
-   (die "swm-" VERSION ", 2006-2013 Erik Falor~n"))
+   (die "swm-~a, 2006-2013 Erik Falor~n" VERSION))
   ((not (= 1 (length (argv))))
-   (die "usage: dwm [-v]\n")))
+   (die "usage: swm [-v]\n"))
+  (else
 
 ;  	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
 ;  		fputs("warning: no locale support\n", stderr);
-;  	if(!(dpy = XOpenDisplay(NULL)))
-;  		die("dwm: cannot open display\n");
+	(let ((dpy (xopendisplay #f)))
+	  (unless dpy
+		(die "dwm: cannot open display\n"))
 ;  	checkotherwm();
 ;  	setup();
 ;  	scan();
 ;  	run();
 ;  	cleanup();
-;  	XCloseDisplay(dpy);
+	  (xclosedisplay dpy))))
 ;  	return EXIT_SUCCESS;
 ;  }
