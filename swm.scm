@@ -135,12 +135,12 @@
 
 ;  variables
 (define *broken* "broken")
-(define stext "")
-(define screen)
-(define sw) (define sh) ; X display screen geometry width, height
-(define bh) (define blw 0) ; bar geometry
+(define *stext* "")
+(define *screen*)
+(define *sw*) (define *sh*) ; X display screen geometry width, height
+(define *bh*) (define *blw* 0) ; bar geometry
 ;  static int (*xerrorxlib)(Display *, XErrorEvent *);
-(define numlockmask 0)
+(define *numlockmask* 0)
 ;  static void (*handler[LASTEvent]) (XEvent *) = {
 ;  	[ButtonPress] = buttonpress,
 ;  	[ClientMessage] = clientmessage,
@@ -161,17 +161,18 @@
 ;TODO - make sure these aren't gonna be off-by-one errors
 ;(define wmatom (make-vector (DefaultAtoms->int 'WMLast)))
 ;(define netatom (make-vector (DefaultAtoms->int 'NetLast)))
-(define running #t)
-(define cursor (make-vector (Cursor->int 'CurLast)))
-(define dpy)
-(define dc)
-(define mons #f) (define selmon #f)
-(define root)
+(define *running* #t)
+(define *cursor* (make-vector (Cursor->int 'CurLast)))
+(define *dpy*)
+(define *dc*)
+(define *mons* #f) (define *selmon* #f)
+(define *root*)
 
 ;  /* compile-time check if all tags fit into an unsigned int bit array. */
 ;  struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
 ; function implementations
+
 ;  void
 ;  applyrules(Client *c) {
 ;  	const char *class, *instance;
@@ -2048,14 +2049,14 @@
 
 ;  	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
 ;  		fputs("warning: no locale support\n", stderr);
-	(let ((dpy (xopendisplay #f)))
-	  (unless dpy
+	(let ((*dpy* (xopendisplay #f)))
+	  (unless *dpy*
 		(die "dwm: cannot open display\n"))
 ;  	checkotherwm();
 ;  	setup();
 ;  	scan();
 ;  	run();
 ;  	cleanup();
-	  (xclosedisplay dpy))))
+	  (xclosedisplay *dpy*))))
 ;  	return EXIT_SUCCESS;
 ;  }
