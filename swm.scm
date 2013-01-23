@@ -205,7 +205,7 @@
 ;  applysizehints(Client *c, int *x, int *y, int *w, int *h, Bool interact) {
 ;  	Bool baseismin;
 ;  	Monitor *m = c->mon;
-
+;
 ;  	/* set minimum possible */
 ;  	*w = MAX(1, *w);
 ;  	*h = MAX(1, *h);
@@ -567,10 +567,16 @@
 ;  	}
 ;  }
 
-(define die
-  (lambda l
-	(for-each (lambda (i) (printf i)) l)
-	(exit 1)))
+(define-syntax die
+  (er-macro-transformer
+	(lambda (expr rename compare)
+	  (let ((format (cadr expr))
+			(args (cddr expr)))
+		`(,(rename 'begin)
+		   (,(rename 'fprintf) (,(rename current-error-port)) ,format ,@args)
+		   (,(rename 'flush-output) (,(rename current-error-port)))
+		   (,(rename 'exit) 1))))))
+
 ;  void
 ;  die(const char *errstr, ...) {
 ;  	va_list ap;
