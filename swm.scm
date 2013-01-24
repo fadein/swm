@@ -27,6 +27,7 @@
 (use extras)
 (use xlib)
 (use miscmacros)
+(use lolevel)
 
 ;  /* macros */
 (define-syntax BUTTONMASK
@@ -47,6 +48,8 @@
 ;  #define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
 ;  #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 ;  #define TEXTW(X)                (textnw(X, strlen(X)) + dc.font.height)
+(define-syntax << (syntax-rules () ((_ n1 n2) (arithmetic-shift n1 n2))))
+(define-syntax >> (syntax-rules () ((_ n1 n2) (arithmetic-shift n1 (- n2)))))
 
 ; enums
 (define-enum Cursor->int Cursor->sym
@@ -1836,20 +1839,20 @@
 ;  	return dirty;
 ;  }
 
-;  void
-;  updatenumlockmask(void) {
-;  	unsigned int i, j;
-;  	XModifierKeymap *modmap;
-
-;  	numlockmask = 0;
-;  	modmap = XGetModifierMapping(dpy);
-;  	for(i = 0; i < 8; i++)
-;  		for(j = 0; j < modmap->max_keypermod; j++)
-;  			if(modmap->modifiermap[i * modmap->max_keypermod + j]
-;  			   == XKeysymToKeycode(dpy, XK_Num_Lock))
-;  				numlockmask = (1 << i);
-;  	XFreeModifiermap(modmap);
-;  }
+(define (updatenumlockmask)
+  (set! *numlockmask* 0)
+  (let* ((modmap (xgetmodifiermapping *dpy*))
+		 (numlock-code (xkeysymtokeycode *dpy* XK_NUM_LOCK))
+		 (nkeys (xmodifierkeymap-max_keypermod keymap)) )
+	(do ((i 0 (add1 i))) ((= i 8))
+	  (do ((j 0 (add1 j))) ((= j nkeys))
+		(let* ((item (+ j (* 8 i)))
+			   (offset (* 8 (+ j (* i nkeys))))
+			   (value
+				 (integer->char (pointer-u8-ref (pointer+ modmap offset)))))
+		  (when (eqv? value numlock-code)
+			(set! *numlockmask* (<< 1 i))))))
+	(xfreemodifiermap modmap)))
 
 ;  void
 ;  updatesizehints(Client *c) {
