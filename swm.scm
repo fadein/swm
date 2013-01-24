@@ -138,6 +138,7 @@
 			   monitor)
 
 ;  variables
+(define *VERSION* "6.0")
 (define *broken* "broken")
 (define *stext* "")
 (define *screen*)
@@ -2039,14 +2040,18 @@
 (define tile (lambda () '())) (define monocle (lambda () '())); DELETE ME
 ; configuration, allows nested code to access above variables
 (include "config.scm")
-(define VERSION "6.0")
 
 
 ;  int
 ;  main(int argc, char *argv[]) {
 (cond
   ((and (= 2 (length (argv))) (string=? "-v" (cadr (argv))))
-   (die "swm-~a, 2006-2013 Erik Falor~n" VERSION))
+   (die (string-concatenate
+		  `("swm-"
+			,*VERSION*
+			", © 2006-2013 Erik Falor\n"
+			"Based upon dwm-6.0, © 2006-2011 dwm engineers, "
+			"see LICENSE for details\n"))))
   ((not (= 1 (length (argv))))
    (die "usage: swm [-v]\n"))
   (else
