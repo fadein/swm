@@ -25,9 +25,9 @@
 ;To understand everything else, start reading main().
 
 (use extras)
-(use xlib)
 (use miscmacros)
 (use lolevel)
+(use xlib)
 
 ;  /* macros */
 (define-syntax BUTTONMASK
@@ -1479,10 +1479,10 @@
 ;  void
 ;  setup(void) {
 ;  	XSetWindowAttributes wa;
-
+;
 ;  	/* clean up any zombies immediately */
 ;  	sigchld(0);
-
+;
 ;  	/* init screen */
 ;  	screen = DefaultScreen(dpy);
 ;  	root = RootWindow(dpy, screen);
