@@ -25,8 +25,9 @@
 ;To understand everything else, start reading main().
 
 (use extras)
-(use miscmacros)
 (use lolevel)
+(use miscmacros)
+(use srfi-13)
 (use xlib)
 
 ;  /* macros */
