@@ -1552,12 +1552,21 @@
 ;  	}
 ;  }
 
-;  void
-;  sigchld(int unused) {
-;  	if(signal(SIGCHLD, sigchld) == SIG_ERR)
-;  		die("Can't install SIGCHLD handler");
-;  	while(0 < waitpid(-1, NULL, WNOHANG));
-;  }
+;this routine installs itself as the signal handler for SIGCHLD,
+;and then waits for all children to exit
+(define (sigchld unused)
+  ;(re-)install this function as sigchld handler
+  (set-signal-handler! signal/chld sigchld)
+  (when (not (equals? sigchld (signal-handler signal/chld)))
+	(die "Can't install SIGCHLD handler"))
+  (handle-exceptions
+	exn
+	; If this process has no children, (process-wait -1) throws an exception;
+	(lambda (exception-to-swallow) '())
+	(let swallow ((keep-going 1))
+	  (when (< 0 keep-going)
+		(receive (epid enorm ecode) (process-wait -1 #t)
+				 (swallow epid))))))
 
 ;  void
 ;  spawn(const Arg *arg) {
