@@ -730,14 +730,10 @@
 ;  	focus(c);
 ;  }
 
-;  void
-;  expose(XEvent *e) {
-;  	Monitor *m;
-;  	XExposeEvent *ev = &e->xexpose;
-
-;  	if(ev->count == 0 && (m = wintomon(ev->window)))
-;  		drawbar(m);
-;  }
+(define (expose e)
+  (let ((m (wintomon (xexpose-window e))))
+	(if (and m (= 0 (xexpose-count e)))
+	  (drawbar m))))
 
 ;  void
 ;  focus(Client *c) {
