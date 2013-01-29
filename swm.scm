@@ -48,7 +48,8 @@
   (syntax-rules () ((_) (bitwise-ior BUTTONMASK POINTERMOTIONMASK))))
 ;  #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
 ;  #define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
-;  #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
+(define-syntax TAGMASK  ;unhygenic macro refers to list tags from config.scm
+  (syntax-rules () ((_) (arithmetic-shift 1 (- (length tags) 1)))))
 ;  #define TEXTW(X)                (textnw(X, strlen(X)) + dc.font.height)
 (define-syntax << (syntax-rules () ((_ n1 n2) (arithmetic-shift n1 n2))))
 (define-syntax >> (syntax-rules () ((_ n1 n2) (arithmetic-shift n1 (- n2)))))
@@ -1580,14 +1581,11 @@
 	(fprintf (current-error-port) "swm: (process-execute ~a) failed~n" (car arg))
 	(exit 0)))
 
-;  void
-;  tag(const Arg *arg) {
-;  	if(selmon->sel && arg->ui & TAGMASK) {
-;  		selmon->sel->tags = arg->ui & TAGMASK;
-;  		focus(NULL);
-;  		arrange(selmon);
-;  	}
-;  }
+(define (tag arg)
+  (when (and (Monitor-sel *selmon*) (bitwise-and arg (TAGMASK)))
+	(set! (Client-tags (Monitor-sel *selmon*)) (bitwise-and arg (TAGMASK)))
+	(focus #f)
+	(arrange *selmon*)))
 
 ;  void
 ;  tagmon(const Arg *arg) {
