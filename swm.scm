@@ -43,7 +43,6 @@
 					(max 0 (- (min (+ y h) (+ (Monitor-wy m) (Monitor-wh m)))
 							  (max y (Monitor-wy m))))))))
 ;  #define ISVISIBLE(C)            ((C->tags & C->mon->tagset[C->mon->seltags]))
-;  #define LENGTH(X)               (sizeof X / sizeof X[0])
 (define-syntax MOUSEMASK
   (syntax-rules () ((_) (bitwise-ior BUTTONMASK POINTERMOTIONMASK))))
 ;  #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
@@ -169,11 +168,11 @@
 ;(define wmatom (make-vector (DefaultAtoms->int 'WMLast)))
 ;(define netatom (make-vector (DefaultAtoms->int 'NetLast)))
 (define *running* #t)
-(define *cursor* (make-vector (Cursor->int 'CurLast)))
-(define *dpy* #f)
-(define *dc*)
-(define *mons* #f) (define *selmon* #f)
-(define *root*)
+(define *cursor* (make-vector (Cursor->int 'CurLast))) ;Cursor
+(define *dpy* #f) ;Display
+(define *dc*) ;DC
+(define *mons* #f) (define *selmon* #f) ;Monitor
+(define *root*) ;Window
 
 ;  /* compile-time check if all tags fit into an unsigned int bit array. */
 ;  struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
