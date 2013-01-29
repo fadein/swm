@@ -27,6 +27,7 @@
 (use extras)
 (use lolevel)
 (use miscmacros)
+(use posix)
 (use srfi-13)
 (use xlib)
 
@@ -168,7 +169,7 @@
 ;(define netatom (make-vector (DefaultAtoms->int 'NetLast)))
 (define *running* #t)
 (define *cursor* (make-vector (Cursor->int 'CurLast)))
-(define *dpy*)
+(define *dpy* #f)
 (define *dc*)
 (define *mons* #f) (define *selmon* #f)
 (define *root*)
@@ -1568,18 +1569,16 @@
 		(receive (epid enorm ecode) (process-wait -1 #t)
 				 (swallow epid))))))
 
-;  void
-;  spawn(const Arg *arg) {
-;  	if(fork() == 0) {
-;  		if(dpy)
-;  			close(ConnectionNumber(dpy));
-;  		setsid();
-;  		execvp(((char **)arg->v)[0], (char **)arg->v);
-;  		fprintf(stderr, "dwm: execvp %s", ((char **)arg->v)[0]);
-;  		perror(" failed");
-;  		exit(EXIT_SUCCESS);
-;  	}
-;  }
+(define (spawn arg)
+  (when (= 0 (process-fork))
+	(if *dpy* (file-close (xconnectionnumber *dpy*)))
+	(create-session)
+	(handle-exceptions
+	  exn
+	  (lambda (exception-to-swallow) '())
+	  (process-execute (car arg) (cdr arg)))
+	(fprintf (current-error-port) "swm: (process-execute ~a) failed~n" (car arg))
+	(exit 0)))
 
 ;  void
 ;  tag(const Arg *arg) {
