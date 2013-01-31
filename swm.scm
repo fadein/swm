@@ -831,14 +831,21 @@
 ;  	return color.pixel;
 ;  }
 
-;  Bool
-;  getrootptr(int *x, int *y) {
-;  	int di;
-;  	unsigned int dui;
-;  	Window dummy;
-
-;  	return XQueryPointer(dpy, root, &dummy, &dummy, x, y, &di, &di, &dui);
-;  }
+; Since we don't have side-effects, getrootptr returns a pair:
+; when xquerypointer's boolean return value is true the list contains the x,y
+; coords of the pointer in the root window; otherwise '()
+(define (getrootptr)
+  (let* ((dummy (allocate 8)) ;must be freed...
+		 (x (allocate 8))
+		 (y (allocate 8))
+		 (xqp-val
+		   (xquerypointer *dpy* *root* dummy dummy x y dummy dummy dummy))
+		 (xy ;bind to the values in the pointers I shall free
+		   (cons (pointer-u8-ref x) (pointer-u8-ref y))))
+	(free dummy)
+	(free x)
+	(free y)
+	(if (< 0 xqp-val) xy '())))
 
 ;  long
 ;  getstate(Window w) {
