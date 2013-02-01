@@ -182,6 +182,7 @@
 ;  static void expose(XEvent *e);
 ;  static Bool getrootptr(int *x, int *y);
 ;  static Client * nexttiled(Client *c);
+;  static void quit(const Arg *arg);
 ;  static void resize(Client *c, int x, int y, int w, int h, Bool interact);
 ;  static void sigchld(int unused);
 ;  static void spawn(const Arg *arg);
@@ -236,7 +237,6 @@
 ;  static void movemouse(const Arg *arg);
 ;  static void pop(Client *);
 ;  static void propertynotify(XEvent *e);
-;  static void quit(const Arg *arg);
 ;  static Monitor * recttomon(int x, int y, int w, int h);
 ;  static void resizeclient(Client *c, int x, int y, int w, int h);
 ;  static void resizemouse(const Arg *arg);
@@ -1314,10 +1314,8 @@
 ;  	}
 ;  }
 
-;  void
-;  quit(const Arg *arg) {
-;  	running = False;
-;  }
+(define (quit arg)
+  (set! *running* #f))
 
 ;  Monitor *
 ;  recttomon(int x, int y, int w, int h) {
