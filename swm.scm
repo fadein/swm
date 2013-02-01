@@ -179,6 +179,7 @@
 
 ; ported functions
 ;  static void die(const char *errstr, ...);
+;  static void drawbars(void);
 ;  static void expose(XEvent *e);
 ;  static Bool getrootptr(int *x, int *y);
 ;  static Client * nexttiled(Client *c);
@@ -212,7 +213,6 @@
 ;  static void detachstack(Client *c);
 ;  static Monitor * dirtomon(int dir);
 ;  static void drawbar(Monitor *m);
-;  static void drawbars(void);
 ;  static void drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]);
 ;  static void drawtext(const char *text, unsigned long col[ColLast], Bool invert);
 ;  static void enternotify(XEvent *e);
@@ -752,13 +752,11 @@
 ;  	XSync(dpy, False);
 ;  }
 
-;  void
-;  drawbars(void) {
-;  	Monitor *m;
-;
-;  	for(m = mons; m; m = m->next)
-;  		drawbar(m);
-;  }
+(define (drawbars)
+  (let loop ((m *mons*))
+	(unless (null? m)
+	  (drawbar m)
+	  (loop (Monitor-next m)))))
 
 ;  void
 ;  drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]) {
