@@ -177,7 +177,9 @@
 ;  /* compile-time check if all tags fit into an unsigned int bit array. */
 ;  struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
-; ported functions
+
+; TOTAL FUNCTIONS 96
+; ported functions - 13
 ;  static void die(const char *errstr, ...);
 ;  static void drawbars(void);
 ;  static void expose(XEvent *e);
@@ -190,8 +192,9 @@
 ;  static void tag(const Arg *arg);
 ;  static void tile(Monitor *);
 ;  static void updatenumlockmask(void);
+;  static Client * wintoclient(Window w);
 
-; functions to port
+; functions to port - 83
 ;  static void applyrules(Client *c);
 ;  static Bool applysizehints(Client *c, int *x, int *y, int *w, int *h, Bool interact);
 ;  static void arrange(Monitor *m);
@@ -270,7 +273,6 @@
 ;  static void updatetitle(Client *c);
 ;  static void updatewmhints(Client *c);
 ;  static void view(const Arg *arg);
-;  static Client * wintoclient(Window w);
 ;  static Monitor * wintomon(Window w);
 ;  static int xerror(Display *dpy, XErrorEvent *ee);
 ;  static int xerrordummy(Display *dpy, XErrorEvent *ee);
@@ -2055,21 +2057,21 @@
 ;  	arrange(selmon);
 ;  }
 
-;  Client *
-;  wintoclient(Window w) {
-;  	Client *c;
-;  	Monitor *m;
-;
-;  	for(m = mons; m; m = m->next)
-;  		for(c = m->clients; c; c = c->next)
-;  			if(c->win == w)
-;  				return c;
-;  	return NULL;
-;  }
+(define (wintoclient w)
+  (call/cc
+	(lambda (return)
+	  (let outer ((m *mons*))
+		(if (not m)
+		  #f
+		  (let inner ((c (Monitor-clients m)))
+			(if (not c)
+			  (outer (Monitor-next m))
+			  (if (eqv? w (Client-win c))
+				(return c)
+				(inner (Client-next c))))))))));
 
 ;  Monitor *
 ;  wintomon(Window w) {
-(define (wintomon w)
 ;  	int x, y;
 ;  	Client *c;
 ;  	Monitor *m;
@@ -2083,7 +2085,6 @@
 ;  		return c->mon;
 ;  	return selmon;
 ;  }
-)
 
 ;  /* There's no way to check accesses to destroyed windows, thus those cases are
 ;   * ignored (especially on UnmapNotify's).  Other types of errors call Xlibs
